@@ -9,12 +9,39 @@ const asyncHandler = require('../middleware/async');
 exports.getBootcamps = asyncHandler(async (req, res, next) => {
     let query;
 
-    let queryStr = JSON.stringify(req.query);
+    // Copy req.query
+    const reqQuery = { ...req.query };
 
+    // Create query string
+    let queryStr = JSON.stringify(reqQuery);
+
+    // Fileds to exlude
+    const removeFields = ['select', 'sort'];
+
+    // Loop over removeFields and delete them from request query
+    removeFields.forEach(param => delete reqQuery[param]);
+
+    // Create operators ($gt, $gte, etc)
     queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, match => `$${ match }`);
 
+    // Finding resource
     query = Bootcamp.find(JSON.parse(queryStr));
 
+    // Select Fields
+    if (req.query.select) {
+        const fields = req.query.select.split(',').join(' ');
+        query = query.select(fields);
+    }
+
+    // Sort
+    if (req.query.sort) {
+        const sortBy = req.query.sort.split(',').join(' ');
+        query = query.sort(sortBy);
+    } else {
+        query = query.sort('-createdAt');
+    }
+
+    // Executing query
     const bootcamp = await query;
 
     res.status(200).json({
